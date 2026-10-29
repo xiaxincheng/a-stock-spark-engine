@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "a-stock-spark-engine"
+version = "0.1.0"
+description = "Executable indicator-expression generation and reproducible A-share research backtesting"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "A-Stock Spark Engine contributors" }]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+llm = ["anthropic>=0.30"]
+
+[project.scripts]
+a-stock-spark = "spark_engine:main"
+
+[tool.setuptools]
+py-modules = ["spark_engine", "backtest_framework", "market_data", "spark_ledger"]
+packages = ["spark_core"]
