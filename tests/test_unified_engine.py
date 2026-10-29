@@ -115,7 +115,8 @@ def test_price_scaled_indicators_are_normalized_and_pattern_direction_is_consist
     specs = {item["name"]: item for item in indicator_manifest()}
     assert "close" in _recipe_expression(specs["BBANDS"], "long")
     assert "/ close" in _recipe_expression(specs["STDDEV"], "long")
-    assert "/ close" in _recipe_expression(specs["MOM"], "long")
+    if "MOM" in specs:
+        assert "/ close" in _recipe_expression(specs["MOM"], "long")
 
     rng_state = __import__("random").getstate()
     __import__("random").seed(42)

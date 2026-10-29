@@ -174,6 +174,74 @@ def _ema(series: pd.Series, n: int) -> pd.Series:
     return series.ewm(span=int(n), adjust=False, min_periods=1).mean()
 
 
+def _macd_part(part: int):
+    def compute(df: pd.DataFrame, fast: float, slow: float, signal: float) -> pd.Series:
+        close = _required_col(df, "close")
+        fast_ema = close.ewm(span=int(fast), adjust=False, min_periods=1).mean()
+        slow_ema = close.ewm(span=int(slow), adjust=False, min_periods=1).mean()
+        dif = fast_ema - slow_ema
+        dea = dif.ewm(span=int(signal), adjust=False, min_periods=1).mean()
+        return [dif, dea, dif - dea][part]
+    return compute
+
+
+for _part, _idx, _label in (("DIF", 0, "快线"), ("DEA", 1, "慢线"), ("HIST", 2, "柱")):
+    _register(
+        f"MACD_{_part}",
+        (("FAST", 2, 100), ("SLOW", 3, 200), ("SIGNAL", 2, 100)),
+        "MACD",
+        f"MACD-{_label}",
+        _macd_part(_idx),
+    )
+
+
+def _bband(kind: int, label: str):
+    def compute(df: pd.DataFrame, n: float, upper_k: float, lower_k: float = 0.0, matype: float = 0.0) -> pd.Series:
+        close = _required_col(df, "close")
+        mid = close.rolling(int(n), min_periods=1).mean()
+        deviation = close.rolling(int(n), min_periods=1).std()
+        return [mid + upper_k * deviation, mid, mid - lower_k * deviation][kind]
+    return compute
+
+
+_register(
+    "BBANDS",
+    (("N", 2, 200), ("NBDEVUP", 0.5, 5), ("NBDEVDN", 0.5, 5), ("MATYPE", 0, 8)),
+    "布林轨道",
+    "布林带上轨（与TA-Lib简洁兼容）",
+    _bband(0, "UPPER"),
+)
+for _kind, _idx in (("UPPER", 0), ("MID", 1), ("LOWER", 2)):
+    _register(
+        f"BOLL_{_kind}",
+        (("N", 2, 200), ("UP", 0.5, 5), ("DOWN", 0.5, 5)),
+        "布林轨道",
+        f"布林带{_kind}",
+        _bband(_idx, _kind),
+    )
+
+
+_register("SMA", (("N", 2, 250),), "均线", "N日简单移动平均", lambda df, N: _required_col(df, "close").rolling(int(N), min_periods=1).mean())
+_register("STDDEV", (("N", 2, 250),), "波动", "N日收盘价标准差", lambda df, N: _required_col(df, "close").rolling(int(N), min_periods=2).std())
+_register("OBV", (), "量能", "能量潮", lambda df: (_required_col(df, "volume") * _required_col(df, "close").diff().fillna(0).gt(0).map({True: 1, False: -1})).cumsum())
+
+
+def _adx(df: pd.DataFrame, n: int) -> pd.Series:
+    high, low, close = _required_col(df, "high"), _required_col(df, "low"), _required_col(df, "close")
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = up.where((up > down) & (up > 0), 0.0)
+    minus_dm = down.where((down > up) & (down > 0), 0.0)
+    tr = _atr(df, int(n))
+    plus_di = 100 * plus_dm.ewm(alpha=1 / int(n), adjust=False).mean() / tr.replace(0, np.nan)
+    minus_di = 100 * minus_dm.ewm(alpha=1 / int(n), adjust=False).mean() / tr.replace(0, np.nan)
+    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+    return dx.ewm(alpha=1 / int(n), adjust=False).mean()
+
+
+_register("ADX", (("N", 2, 200),), "趋势", "平均趋向指数", _adx)
+
+
 def _kdj_part(part: str):
     def compute(df: pd.DataFrame, N: float, M1: float, M2: float) -> pd.Series:
         high, low, close = _required_col(df, "high"), _required_col(df, "low"), _required_col(df, "close")

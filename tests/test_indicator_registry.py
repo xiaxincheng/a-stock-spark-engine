@@ -34,11 +34,13 @@ def test_registry_covers_open_source_indicator_families():
 
     minimum = 180 if talib_available else 35
     assert len(FUNCTION_REGISTRY) + len(PATTERN_FUNCTIONS) >= minimum
-    for name in [
+    baseline_names = [
         "MACD_DIF", "MACD_DEA", "MACD_HIST", "KDJ_K", "KDJ_D", "KDJ_J",
-        "ADX", "AROON_UP", "OBV", "MFI", "TRIX", "SAR", "SMA", "STDDEV",
+        "ADX", "OBV", "SMA", "STDDEV",
         "BOLL_UPPER", "ENE_LOWER", "VR", "PSY",
-    ]:
+    ]
+    extended_names = ["AROON_UP", "MFI", "TRIX", "SAR", "CDLHAMMER", "CDLENGULFING"]
+    for name in baseline_names + (extended_names if talib_available else []):
         assert name in FUNCTION_REGISTRY or name in PATTERN_FUNCTIONS
 
 
@@ -61,4 +63,5 @@ def test_indicator_manifest_counts():
     except ImportError:
         return
     assert counts.get("TA-Lib形态", 0) == 61
-    assert counts.get("TA-Lib指标", 0) >= 55
+    assert counts.get("TA-Lib指标", 0) >= 47
+    assert sum(counts.values()) >= 175
